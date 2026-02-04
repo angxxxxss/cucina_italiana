@@ -10,12 +10,12 @@ from decimal import Decimal, ROUND_HALF_UP
 import os
 from typing import Any, Dict, List, Optional
 
-import bcrypt #type: ignore
-from dotenv import load_dotenv #type: ignore
-from sqlalchemy import create_engine, text #type: ignore
-from sqlalchemy.engine import Engine #type: ignore
-from sqlalchemy.exc import SQLAlchemyError #type: ignore
-from sqlalchemy.orm import sessionmaker #type: ignore
+import bcrypt 
+from dotenv import load_dotenv 
+from sqlalchemy import create_engine, text 
+from sqlalchemy.engine import Engine 
+from sqlalchemy.exc import SQLAlchemyError 
+from sqlalchemy.orm import sessionmaker 
 
 load_dotenv()
 
@@ -160,35 +160,57 @@ def calculate_recipe_cost(recipe_id: int, people: int) -> Decimal:
     - costo_parziale = (quantity / servings_default) * people * price_per_unit
     - costo_ricetta_per_people = somma dei costi parziali
     """
-    recipe = fetch_one(
-        """
-        SELECT servings_default
-        FROM recipes
-        WHERE id = :recipe_id
-        """,
-        {"recipe_id": recipe_id},
-    )
+    try:
+        recipe = fetch_one(
+            """
+            SELECT servings_default
+            FROM recipes
+            WHERE id = :recipe_id
+            """,
+            {"recipe_id": recipe_id},
+        )
+    except SQLAlchemyError:
+        return Decimal("0.00")
+
     if not recipe:
         return Decimal("0.00")
 
-    servings_default = Decimal(str(recipe["servings_default"]))
+    servings_default_raw = recipe.get("servings_default")
+    if servings_default_raw in (None, "", 0):
+        return Decimal("0.00")
+
+    try:
+        servings_default = Decimal(str(servings_default_raw))
+    except Exception:
+        return Decimal("0.00")
+
     if servings_default == 0:
         return Decimal("0.00")
 
-    rows = fetch_all(
-        """
-        SELECT ri.quantity, i.price_per_unit
-        FROM recipe_ingredients ri
-        JOIN ingredients i ON i.id = ri.ingredient_id
-        WHERE ri.recipe_id = :recipe_id
-        """,
-        {"recipe_id": recipe_id},
-    )
+    try:
+        rows = fetch_all(
+            """
+            SELECT ri.quantity, i.price_per_unit
+            FROM recipe_ingredients ri
+            JOIN ingredients i ON i.id = ri.ingredient_id
+            WHERE ri.recipe_id = :recipe_id
+            """,
+            {"recipe_id": recipe_id},
+        )
+    except SQLAlchemyError:
+        rows = []
 
     total = Decimal("0")
     for row in rows:
-        quantity = Decimal(str(row["quantity"]))
-        price_per_unit = Decimal(str(row["price_per_unit"]))
+        quantity_raw = row.get("quantity")
+        price_raw = row.get("price_per_unit")
+        if quantity_raw in (None, "") or price_raw in (None, ""):
+            continue
+        try:
+            quantity = Decimal(str(quantity_raw))
+            price_per_unit = Decimal(str(price_raw))
+        except Exception:
+            continue
         partial = (quantity / servings_default) * Decimal(people) * price_per_unit
         total += partial
 

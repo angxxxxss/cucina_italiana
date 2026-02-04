@@ -9,8 +9,9 @@ from decimal import Decimal
 import os
 from typing import Any, Dict, Optional
 
-from dotenv import load_dotenv # type: ignore
-from flask import Flask, jsonify, request, session, send_from_directory # type: ignore
+from dotenv import load_dotenv 
+from flask import Flask, jsonify, request, session, send_from_directory
+from sqlalchemy.exc import SQLAlchemyError 
 
 import models
 
@@ -80,6 +81,13 @@ def _require_login() -> Optional[Dict[str, Any]]:
     return user
 
 
+def _serialize_value(value: Any) -> Any:
+    if isinstance(value, Decimal):
+        integral = value.to_integral_value()
+        return int(integral) if value == integral else float(value)
+    return value
+
+
 @app.route("/api/recipes")
 def recipes() -> Any:
     genre = request.args.get("genre")
@@ -139,12 +147,16 @@ def cart_list() -> Any:
     for item in items:
         item_total = models.calculate_recipe_cost(item["recipe_id"], item["people"])
         total += item_total
+        item_id = _serialize_value(item.get("id"))
+        recipe_id = _serialize_value(item.get("recipe_id"))
+        people = _serialize_value(item.get("people"))
+        wine_id = _serialize_value(item.get("wine_id"))
         output_items.append(
             {
-                "id": item["id"],
-                "recipe_id": item["recipe_id"],
-                "people": item["people"],
-                "wine_id": item.get("wine_id"),
+                "id": item_id,
+                "recipe_id": recipe_id,
+                "people": people,
+                "wine_id": wine_id,
                 "recipe_name": item.get("recipe_name"),
                 "image_url": item.get("image_url"),
                 "item_total": float(item_total),
@@ -161,15 +173,41 @@ def cart_add() -> Any:
         return jsonify({"error": "Autenticazione richiesta."}), 401
 
     payload = request.get_json(silent=True) or {}
-    recipe_id = payload.get("recipe_id")
-    people = payload.get("people")
-    wine_id = payload.get("wine_id")
+    recipe_id_raw = payload.get("recipe_id")
+    people_raw = payload.get("people")
+    wine_id_raw = payload.get("wine_id")
 
-    # TODO: validare che recipe_id esista e people > 0.
-    if not recipe_id or not people:
+    if recipe_id_raw is None or people_raw is None:
         return jsonify({"error": "Dati mancanti."}), 400
 
-    models.add_cart_item(user["id"], int(recipe_id), int(people), wine_id)
+    try:
+        recipe_id = int(recipe_id_raw)
+        people = int(people_raw)
+    except (TypeError, ValueError):
+        return jsonify({"error": "Formato dati non valido."}), 400
+
+    if people <= 0:
+        return jsonify({"error": "Il numero di persone deve essere positivo."}), 400
+
+    wine_id: Optional[int]
+    if wine_id_raw in (None, "", "null"):
+        wine_id = None
+    else:
+        try:
+            wine_id = int(wine_id_raw)
+        except (TypeError, ValueError):
+            return jsonify({"error": "Vino non valido."}), 400
+
+    recipe = models.get_recipe(recipe_id)
+    if not recipe:
+        return jsonify({"error": "Ricetta non trovata."}), 404
+
+    try:
+        models.add_cart_item(user["id"], recipe_id, people, wine_id)
+    except SQLAlchemyError:
+        app.logger.exception("Errore durante l'inserimento nel carrello")
+        return jsonify({"error": "Errore durante il salvataggio nel carrello."}), 500
+
     return jsonify({"status": "ok"})
 
 
