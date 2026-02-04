@@ -9,8 +9,8 @@ from decimal import Decimal
 import os
 from typing import Any, Dict, Optional
 
-from dotenv import load_dotenv
-from flask import Flask, jsonify, request, session, send_from_directory
+from dotenv import load_dotenv # type: ignore
+from flask import Flask, jsonify, request, session, send_from_directory # type: ignore
 
 import models
 
