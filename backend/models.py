@@ -10,12 +10,12 @@ from decimal import Decimal, ROUND_HALF_UP
 import os
 from typing import Any, Dict, List, Optional
 
-import bcrypt
-from dotenv import load_dotenv
-from sqlalchemy import create_engine, text
-from sqlalchemy.engine import Engine
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy.orm import sessionmaker
+import bcrypt #type: ignore
+from dotenv import load_dotenv #type: ignore
+from sqlalchemy import create_engine, text #type: ignore
+from sqlalchemy.engine import Engine #type: ignore
+from sqlalchemy.exc import SQLAlchemyError #type: ignore
+from sqlalchemy.orm import sessionmaker #type: ignore
 
 load_dotenv()
 
