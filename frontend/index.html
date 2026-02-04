@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>La Cucina Italiana - Ricette</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div>
+      <h1>La Cucina Italiana</h1>
+      <p class="subtitle">Scopri ricette autentiche e ordina ingredienti completi.</p>
+    </div>
+    <div class="login-box" id="login-box">
+      <div class="login-form" id="login-form">
+        <input type="text" id="login-username" placeholder="Username" />
+        <input type="password" id="login-password" placeholder="Password" />
+        <button id="login-button">Login</button>
+      </div>
+      <div class="login-info" id="login-info"></div>
+    </div>
+  </header>
+
+  <main>
+    <section class="filters">
+      <label for="genre-filter">Filtra per genere:</label>
+      <select id="genre-filter">
+        <option value="">Tutti</option>
+        <option value="Primi">Primi</option>
+        <option value="Dolci">Dolci</option>
+      </select>
+    </section>
+
+    <section class="recipes" id="recipes"></section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
